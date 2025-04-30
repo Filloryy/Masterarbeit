@@ -154,7 +154,7 @@ class torso_left_right_actor(torch.nn.Module):
         return loc, scale
 
 
-actor_net = actor().to(device)#comment this and out uncomment following actor_net line to switch to "normal" NN, change in policy module in_key from graph to observation (line 143)
+actor_net = single_node_actor().to(device)#comment this and out uncomment following actor_net line to switch to "normal" NN, change in policy module in_key from graph to observation (line 143)
 
 
 """
