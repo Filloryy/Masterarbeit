@@ -67,7 +67,7 @@ env = TransformedEnv(
         # normalize observations
         ObservationNorm(in_keys=["observation"]),
         DoubleToFloat(),
-        torsoleftright(in_keys=["observation"], out_keys=["graph"]),
+        OneNode(in_keys=["observation"], out_keys=["graph"]),
         StepCounter(),
     ),
 )
@@ -90,22 +90,12 @@ record_env = TransformedEnv(
                           Compose(
                             ObservationNorm(in_keys=["observation"]),
                             DoubleToFloat(),
-                            torsoleftright(in_keys=["observation"], out_keys=["graph"]),
+                            OneNode(in_keys=["observation"], out_keys=["graph"]),
                             StepCounter(),
                             video_recorder,
                         )
 )
 record_env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0)
-
-
-"""
-actor_net = Sequential("x, edge_index",[
-    (GCNConv(27, 256),"x, edge_index -> x"),
-    nn.Tanh(),
-    (Linear(256, 256),"x, edge_index -> x"),
-    NormalParamExtractor(),
-])
-"""
 
 class actor(torch.nn.Module):
     def __init__(self):
@@ -115,11 +105,8 @@ class actor(torch.nn.Module):
             (Linear(11, 64), "x -> x"),
             (GraphConv(64, 64), "x, edge_index -> x"),
             nn.Tanh(),
-            (GraphConv(64, 64), "x, edge_index -> x"),
-            nn.Tanh(),
             (Linear(64, 16), "x -> x"),
             nn.Tanh(),
-            (global_mean_pool, "x, batch -> x"),
             NormalParamExtractor(),
         ])
 
@@ -129,16 +116,17 @@ class actor(torch.nn.Module):
         #propagation model does not take a list so we unpack the list in a batch as explained in torch_geometric
         if isinstance(data, list):
             batch = Batch.from_data_list(data)
-            loc, scale = self.propagation_model(batch.x, batch.edge_index, batch.batch)  
+            loc, scale = self.propagation_model(batch.x, batch.edge_index)  
         else:
-            batch_vec = torch.zeros(data.x.size(0), dtype=torch.long, device=data.x.device)
-            loc, scale = self.propagation_model(data.x, data.edge_index, batch_vec)
+            loc, scale = self.propagation_model(data.x, data.edge_index)
             loc = loc.t().squeeze(-1)
             scale = scale.t().squeeze(-1)
         return loc, scale
 
 
-actor_net = actor().to(device)
+actor_net = actor().to(device)#comment this and out uncomment following actor_net line to switch to "normal" NN, change in policy module in_key from graph to observation (line 143)
+
+
 """
 actor_net = nn.Sequential(
     nn.LazyLinear(num_cells, device=device),
