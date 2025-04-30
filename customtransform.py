@@ -77,7 +77,7 @@ class OneNode(ObservationTransform):
                         obs[25],
                         obs[26]]], dtype=torch.float)
         
-        edge_index = torch.tensor([[0, 0]], dtype=torch.long).t()
+        edge_index = torch.tensor([[0, 0]], dtype=torch.long).t() #added self loop for propagation
         data = Data(x=x, edge_index=edge_index)
         return data
     
@@ -139,7 +139,7 @@ class torsoleftright(ObservationTransform):
                         0,]],
                         dtype=torch.float)
         
-        edge_index = torch.tensor([[0, 0], [0, 1], [1, 0], [0, 2], [2, 0]], dtype=torch.long).t()
+        edge_index = torch.tensor([[0, 0], [0, 1], [1, 0], [0, 2], [2, 0]], dtype=torch.long).t() 
         data = Data(x=x, edge_index=edge_index)
         return data
     
