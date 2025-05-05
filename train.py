@@ -26,9 +26,10 @@ from torchrl.objectives import ClipPPOLoss
 from torchrl.objectives.value import GAE
 from sim_environment.hubert import QuantrupedEnv
 from hooks import CustomProcessBatchHook, CustomProcessOptimBatchHook, LearningRateSchedulerHook, CumulativeLoggingHook
-from torch_geometric.nn import Linear, Sequential, GCNConv, GraphConv, global_mean_pool, avg_pool
+from torch_geometric.nn import Linear, Sequential, GCNConv, GraphConv, global_mean_pool, avg_pool, to_hetero
 from torch_geometric.data import Data, Batch
-from customtransform import ObsToGraph, OneNode, torsoleftright, fullbodygraph
+from customtransform import ObsToGraph, OneNode, torsoleftright, fullbodygraph, no_padding
+import actors
 """
 is_fork = multiprocessing.get_start_method() == "fork"
 device = (
@@ -92,63 +93,7 @@ record_env = TransformedEnv(
 )
 record_env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0)
 
-class single_node_actor(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        self.propagation_model = Sequential("x, edge_index, batch", [
-            (Linear(27, 64), "x -> x"),
-            (GraphConv(64, 64), "x, edge_index -> x"),
-            nn.Tanh(),
-            (Linear(64, 16), "x -> x"),
-            nn.Tanh(),
-            NormalParamExtractor(),
-        ])
-
-
-    #this is an example forward function, tried with different but somewhat similar functions    
-    def forward(self, data):
-        #propagation model does not take a list so we unpack the list in a batch as explained in torch_geometric
-        if isinstance(data, list):
-            batch = Batch.from_data_list(data)
-            loc, scale = self.propagation_model(batch.x, batch.edge_index)  
-        else:
-            loc, scale = self.propagation_model(data.x, data.edge_index)
-            loc = loc.t().squeeze(-1)
-            scale = scale.t().squeeze(-1)
-        return loc, scale
-
-class torso_left_right_actor(torch.nn.Module):
-    def __init__(self):
-        super().__init__()
-
-        self.propagation_model = Sequential("x, edge_index, batch", [
-            (Linear(11, 64), "x -> x"),
-            (GraphConv(64, 64), "x, edge_index -> x"),
-            nn.Tanh(),
-            (GraphConv(64, 64), "x, edge_index -> x"),
-            nn.Tanh(),
-            (Linear(64, 16), "x -> x"),
-            nn.Tanh(),
-            (global_mean_pool, "x, batch -> x"),
-            NormalParamExtractor(),
-        ])
-
-
-    def forward(self, data):
-        if isinstance(data, list):
-            batch = Batch.from_data_list(data)
-            loc, scale = self.propagation_model(batch.x, batch.edge_index, batch.batch)  
-        else:
-            batch_vec = torch.zeros(data.x.size(0), dtype=torch.long, device=data.x.device)
-            loc, scale = self.propagation_model(data.x, data.edge_index, batch_vec)
-            loc = loc.t().squeeze(-1)
-            scale = scale.t().squeeze(-1)
-        return loc, scale
-
-
-actor_net = torso_left_right_actor().to(device)#comment this and out uncomment following actor_net line to switch to "normal" NN, change in policy module in_key from graph to observation (line 143)
-
+actor_net = actors.multinode_actor().to(device)#comment this and out uncomment following actor_net line to switch to "normal" NN, change in policy module in_key from graph to observation (line 143)
 
 """
 actor_net = nn.Sequential(
@@ -195,7 +140,6 @@ value_module = ValueOperator(
     in_keys=["observation"],
 )
 
-
 collector = SyncDataCollector(
     env,
     policy_module,
@@ -210,8 +154,6 @@ observation_shape = (27,)
 dummy_batch = torch.zeros((1, *observation_shape), device=device, dtype=torch.float32)
 with torch.no_grad():
     value_module(dummy_batch)
-
-
 
 advantage_module = GAE(
     gamma=gamma, lmbda=lmbda, value_network=value_module, average_gae=True
@@ -270,12 +212,13 @@ trainer.register_op("post_steps", lrscheduler_hook)
 trainer.register_op("post_steps_log", cum_reward)
 
 
-#trainer.train()
-trainer.load_from_file("Logs/fullbodygraph/Trainer/trainer.pt")
+trainer.train()
+#trainer.load_from_file("Logs/fullbodygraph/Trainer/trainer.pt")
 
 #rendering video
-
+"""
 with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
     video_rollout = record_env.rollout(1000, policy_module)
     video_recorder.dump()
     del video_rollout
+"""
