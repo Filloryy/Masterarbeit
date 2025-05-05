@@ -202,7 +202,7 @@ class fullbodygraph(ObservationTransform):
             device=observation_spec.device,
         )
     
-class no_padding(ObservationTransform):
+class heterograph(ObservationTransform):
     def _apply_transform(self, obs: torch.Tensor) -> NonTensorData:
         data = HeteroData()
         data['torso'].x = torch.tensor([[obs[0], obs[1], obs[2], obs[3], obs[4], obs[13], obs[14], obs[15], obs[16], obs[17], obs[18]],

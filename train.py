@@ -28,7 +28,7 @@ from sim_environment.hubert import QuantrupedEnv
 from hooks import CustomProcessBatchHook, CustomProcessOptimBatchHook, LearningRateSchedulerHook, CumulativeLoggingHook
 from torch_geometric.nn import Linear, Sequential, GCNConv, GraphConv, global_mean_pool, avg_pool, to_hetero
 from torch_geometric.data import Data, Batch
-from customtransform import ObsToGraph, OneNode, torsoleftright, fullbodygraph, no_padding
+from customtransform import ObsToGraph, OneNode, torsoleftright, fullbodygraph, heterograph
 import actors
 """
 is_fork = multiprocessing.get_start_method() == "fork"
