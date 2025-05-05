@@ -28,7 +28,7 @@ from sim_environment.hubert import QuantrupedEnv
 from hooks import CustomProcessBatchHook, CustomProcessOptimBatchHook, LearningRateSchedulerHook, CumulativeLoggingHook
 from torch_geometric.nn import Linear, Sequential, GCNConv, GraphConv, global_mean_pool, avg_pool
 from torch_geometric.data import Data, Batch
-from customtransform import ObsToGraph, OneNode, torsoleftright
+from customtransform import ObsToGraph, OneNode, torsoleftright, fullbodygraph
 """
 is_fork = multiprocessing.get_start_method() == "fork"
 device = (
@@ -67,16 +67,10 @@ env = TransformedEnv(
         # normalize observations
         ObservationNorm(in_keys=["observation"]),
         DoubleToFloat(),
-        OneNode(in_keys=["observation"], out_keys=["graph"]),
+        fullbodygraph(in_keys=["observation"], out_keys=["graph"]),
         StepCounter(),
     ),
 )
-"""
-env = TransformedEnv(
-    env,
-    ObsToGraph(in_keys=["observation"], out_keys=["graph"]),
-)
-"""
 
 env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0) #initial stats for observation normalization
 
@@ -85,6 +79,7 @@ env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0) #initial sta
 path = "./Quant4/training_loop"
 logger = CSVLogger(exp_name="PPO", log_dir=path, video_format="mp4")
 video_recorder = VideoRecorder(logger, tag="video")
+"""
 record_env = TransformedEnv(
     GymEnv("hubert", from_pixels=True, pixels_only=False),
                           Compose(
@@ -96,13 +91,13 @@ record_env = TransformedEnv(
                         )
 )
 record_env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0)
-
+"""
 class single_node_actor(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
         self.propagation_model = Sequential("x, edge_index, batch", [
-            (Linear(11, 64), "x -> x"),
+            (Linear(27, 64), "x -> x"),
             (GraphConv(64, 64), "x, edge_index -> x"),
             nn.Tanh(),
             (Linear(64, 16), "x -> x"),
@@ -140,8 +135,6 @@ class torso_left_right_actor(torch.nn.Module):
         ])
 
 
-    #this is an example forward function, tried with different but somewhat similar functions    
-        #propagation model does not take a list so we unpack the list in a batch as explained in torch_geometric
     def forward(self, data):
         if isinstance(data, list):
             batch = Batch.from_data_list(data)
@@ -154,7 +147,7 @@ class torso_left_right_actor(torch.nn.Module):
         return loc, scale
 
 
-actor_net = single_node_actor().to(device)#comment this and out uncomment following actor_net line to switch to "normal" NN, change in policy module in_key from graph to observation (line 143)
+actor_net = torso_left_right_actor().to(device)#comment this and out uncomment following actor_net line to switch to "normal" NN, change in policy module in_key from graph to observation (line 143)
 
 
 """
