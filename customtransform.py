@@ -161,3 +161,40 @@ class torsoleftright(ObservationTransform):
             dtype=observation_spec.dtype,
             device=observation_spec.device,
         )
+
+class fullbodygraph(ObservationTransform):
+    def _apply_transform(self, obs: torch.Tensor) -> NonTensorData:
+        #at ~50% steps -> 0.70-0.90 r_training
+        x = torch.tensor([[obs[0], obs[1], obs[2], obs[3], obs[4], obs[13], obs[14], obs[15], obs[16], obs[17], obs[18]],
+                            [obs[5], obs[19], 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [obs[6], obs[20], 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [obs[7], obs[21], 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [obs[8], obs[22], 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [obs[9], obs[23], 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [obs[10], obs[24], 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [obs[11], obs[25], 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                            [obs[12], obs[26], 0, 0, 0, 0, 0, 0, 0, 0, 0],],
+                              dtype=torch.float)     
+        
+        edge_index = torch.tensor([[0, 0], [0, 1], [1, 0], [0, 2], [2, 0]], dtype=torch.long).t() 
+        data = Data(x=x, edge_index=edge_index)
+        return data
+    
+    # The transform must also modify the data at reset time
+    def _reset(
+        self, tensordict: TensorDictBase, tensordict_reset: TensorDictBase
+    ) -> TensorDictBase:
+        return self._call(tensordict_reset)
+
+    # _apply_to_composite will execute the observation spec transform across all
+    # in_keys/out_keys pairs and write the result in the observation_spec which
+    # is of type ``Composite``
+    @_apply_to_composite
+    def transform_observation_spec(self, observation_spec):
+        return Bounded(
+            low=-1,
+            high=1,
+            shape=observation_spec.shape,
+            dtype=observation_spec.dtype,
+            device=observation_spec.device,
+        )
