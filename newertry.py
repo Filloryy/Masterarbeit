@@ -76,22 +76,22 @@ env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0) #initial sta
 
 
 #record environment
-path = "./Quant4/training_loop"
-logger = CSVLogger(exp_name="PPO", log_dir=path, video_format="mp4")
+path = "Logs"
+logger = CSVLogger(exp_name="fullbodygraph", log_dir=path, video_format="mp4")
 video_recorder = VideoRecorder(logger, tag="video")
-"""
+
 record_env = TransformedEnv(
     GymEnv("hubert", from_pixels=True, pixels_only=False),
                           Compose(
                             ObservationNorm(in_keys=["observation"]),
                             DoubleToFloat(),
-                            OneNode(in_keys=["observation"], out_keys=["graph"]),
+                            fullbodygraph(in_keys=["observation"], out_keys=["graph"]),
                             StepCounter(),
                             video_recorder,
                         )
 )
 record_env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0)
-"""
+
 class single_node_actor(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -259,7 +259,7 @@ trainer = Trainer(
     progress_bar=True,
     save_trainer_interval=10000,
     log_interval=10000,
-    save_trainer_file="/home/joshua/Desktop/WorkBase/Quant4/training_loop/GNN_PPO/Trainer/trainer.pt",
+    save_trainer_file="Logs/fullbodygraph/Trainer/trainer.pt",
 )
 #registering hooks, defines the training loop for ppo learning, adapted from torchrl tutorial
 trainer.register_op("batch_process", process_batch_hook)
@@ -270,13 +270,12 @@ trainer.register_op("post_steps", lrscheduler_hook)
 trainer.register_op("post_steps_log", cum_reward)
 
 
-trainer.train()
-#trainer.load_from_file("/home/joshua/Desktop/WorkBase/Quant4/training_loop/GNN_PPO/Trainer/trainer.pt")
+#trainer.train()
+trainer.load_from_file("Logs/fullbodygraph/Trainer/trainer.pt")
 
 #rendering video
-"""
+
 with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
     video_rollout = record_env.rollout(1000, policy_module)
     video_recorder.dump()
     del video_rollout
-"""
