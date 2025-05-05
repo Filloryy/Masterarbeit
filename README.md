@@ -1,7 +1,6 @@
 # Masterarbeit
-# Masterarbeit
 TODO:
-compare performance for graph types
+compare performance for graph types > single_node>fullbodygraph
 "fix" feature dimension
 "fix" pooling
 parameter search
@@ -10,7 +9,7 @@ optimizing the model
 implement challenges
 
 
-miscellaneous:
+Miscellaneous:
 -training with GNN runs twice?
--modulize the code for different experiments
--better eval tool
+-modulate the code for different experiments
+-better evaluate tool
