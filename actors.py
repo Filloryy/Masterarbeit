@@ -58,11 +58,13 @@ class multinode_actor(torch.nn.Module):
             scale = scale.t().squeeze(-1)
         return loc, scale
     
-class embedding_actor(torch.nn.Module):
+class hetero_actor(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.propagation_model = Sequential("x, edge_index, batch", [
+        node_types = ['torso', 'joint']
+        edge_types = [('torso', 'connects', 'joint'), ('joint', 'connects', 'torso'),('joint', 'connects', 'joint')]
+        self.propagation_model = to_hetero(Sequential("x, edge_index", [
             (Linear(-1, 64), "x -> x"),
             (GraphConv(64, 64), "x, edge_index -> x"),
             nn.Tanh(),
@@ -70,18 +72,19 @@ class embedding_actor(torch.nn.Module):
             nn.Tanh(),
             (Linear(64, 16), "x -> x"),
             nn.Tanh(),
-            (global_mean_pool, "x, batch -> x"),
+            #(global_mean_pool, "x, batch -> x"),
             NormalParamExtractor(),
-        ])
+        ]), metadata=(node_types, edge_types))
 
 
     def forward(self, data):
+        print(data.keys)
         if isinstance(data, list):
             batch = Batch.from_data_list(data)
-            loc, scale = self.propagation_model(batch.x, batch.edge_index, batch.batch)  
+            loc, scale = self.propagation_model(batch.x_dict, batch.edge_index_dict)  
         else:
-            batch_vec = torch.zeros(data.x.size(0), dtype=torch.long, device=data.x.device)
-            loc, scale = self.propagation_model(data.x, data.edge_index, batch_vec)
+            loc, scale = self.propagation_model(data['torso'].x, data['torso'].edge_index)
+            print("loc", loc)
             loc = loc.t().squeeze(-1)
             scale = scale.t().squeeze(-1)
         return loc, scale

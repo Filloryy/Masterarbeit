@@ -212,13 +212,12 @@ trainer.register_op("post_steps", lrscheduler_hook)
 trainer.register_op("post_steps_log", cum_reward)
 
 
-trainer.train()
-#trainer.load_from_file("Logs/fullbodygraph/Trainer/trainer.pt")
+#trainer.train()
+trainer.load_from_file("Logs/fullbodygraph/Trainer/trainer.pt")
 
 #rendering video
-"""
+
 with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
     video_rollout = record_env.rollout(1000, policy_module)
     video_recorder.dump()
     del video_rollout
-"""

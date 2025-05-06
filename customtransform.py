@@ -218,9 +218,9 @@ class heterograph(ObservationTransform):
                                 [obs[12], obs[26]],
                                 ], dtype=torch.float)
         
-        data['torso', 'connects', 'joint'].edge_index = torch.tensor([[0, 0],[0, 1], [0, 2], [0, 3]], dtype=torch.long)
-        data['joint', 'connects', 'joint'].edge_index = torch.tensor([[0, 4],[1, 5], [2, 6], [3, 7]], dtype=torch.long)
-        data = T.ToUndirected()(data) 
+        data['torso', 'connects', 'joint'].edge_index = torch.tensor([[0, 0, 0, 0], [0, 1, 2, 3]], dtype=torch.long)
+        data['joint', 'connects', 'torso'].edge_index = torch.tensor([[0, 1, 2, 3], [0, 0, 0, 0]], dtype=torch.long)
+        data['joint', 'connects', 'joint'].edge_index = torch.tensor([[0, 1, 2, 3, 4, 5, 6, 7], [4, 5, 6, 7, 0, 1, 2, 3]], dtype=torch.long)
         return data
     
     # The transform must also modify the data at reset time
