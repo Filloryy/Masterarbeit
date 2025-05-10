@@ -223,7 +223,7 @@ class heterograph(ObservationTransform):
         data['joint', 'connects', 'joint'].edge_index = torch.tensor([[0, 1, 2, 3, 4, 5, 6, 7], [4, 5, 6, 7, 0, 1, 2, 3]], dtype=torch.long)
         return data
     
-    # The transform must also modify the data at reset time
+    #The transform must also modify the data at reset time
     def _reset(
         self, tensordict: TensorDictBase, tensordict_reset: TensorDictBase
     ) -> TensorDictBase:

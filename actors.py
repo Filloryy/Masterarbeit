@@ -17,8 +17,6 @@ class single_node_actor(torch.nn.Module):
             NormalParamExtractor(),
         ])
 
-
-    #this is an example forward function, tried with different but somewhat similar functions    
     def forward(self, data):
         #propagation model does not take a list so we unpack the list in a batch as explained in torch_geometric
         if isinstance(data, list):
