@@ -26,8 +26,6 @@ from torchrl.objectives import ClipPPOLoss
 from torchrl.objectives.value import GAE
 from sim_environment.hubert import QuantrupedEnv
 from hooks import CustomProcessBatchHook, CustomProcessOptimBatchHook, LearningRateSchedulerHook, CumulativeLoggingHook
-from torch_geometric.nn import Linear, Sequential, GCNConv, GraphConv, global_mean_pool, avg_pool, to_hetero
-from torch_geometric.data import Data, Batch
 from customtransform import ObsToGraph, OneNode, torsoleftright, fullbodygraph, heterograph
 import actors
 """
@@ -68,7 +66,7 @@ env = TransformedEnv(
         # normalize observations
         ObservationNorm(in_keys=["observation"]),
         DoubleToFloat(),
-        fullbodygraph(in_keys=["observation"], out_keys=["graph"]),
+        heterograph(in_keys=["observation"], out_keys=["graph"]),
         StepCounter(),
     ),
 )
@@ -78,7 +76,7 @@ env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0) #initial sta
 
 #record environment
 path = "Logs"
-logger = CSVLogger(exp_name="fullbodygraph", log_dir=path, video_format="mp4")
+logger = CSVLogger(exp_name="hetero", log_dir=path, video_format="mp4")
 video_recorder = VideoRecorder(logger, tag="video")
 
 record_env = TransformedEnv(
@@ -86,14 +84,14 @@ record_env = TransformedEnv(
                           Compose(
                             ObservationNorm(in_keys=["observation"]),
                             DoubleToFloat(),
-                            fullbodygraph(in_keys=["observation"], out_keys=["graph"]),
+                            heterograph(in_keys=["observation"], out_keys=["graph"]),
                             StepCounter(),
                             video_recorder,
                         )
 )
 record_env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0)
 
-actor_net = actors.multinode_actor().to(device)#comment this and out uncomment following actor_net line to switch to "normal" NN, change in policy module in_key from graph to observation (line 143)
+actor_net = actors.hetero_actor().to(device)#comment this and out uncomment following actor_net line to switch to "normal" NN, change in policy module in_key from graph to observation (line 143)
 
 """
 actor_net = nn.Sequential(
@@ -199,9 +197,9 @@ trainer = Trainer(
     clip_grad_norm=True,
     clip_norm=max_grad_norm,
     progress_bar=True,
-    save_trainer_interval=10000,
+    save_trainer_interval=1000000,
     log_interval=10000,
-    save_trainer_file="Logs/fullbodygraph/Trainer/trainer.pt",
+    save_trainer_file="Logs/hetero/Trainer/trainer.pt",
 )
 #registering hooks, defines the training loop for ppo learning, adapted from torchrl tutorial
 trainer.register_op("batch_process", process_batch_hook)
@@ -211,12 +209,15 @@ trainer.register_op("pre_steps_log", log_reward)
 trainer.register_op("post_steps", lrscheduler_hook)
 trainer.register_op("post_steps_log", cum_reward)
 
+video = True
+if video == True:
+    trainer.load_from_file("Logs/hetero/Trainer/trainer.pt")
 
-#trainer.train()
-trainer.load_from_file("Logs/fullbodygraph/Trainer/trainer.pt")
+    #rendering video
+    with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
+        video_rollout = record_env.rollout(1000, policy_module)
+        video_recorder.dump()
+        del video_rollout
+else:
+    trainer.train()
 
-#rendering video
-with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
-    video_rollout = record_env.rollout(1000, policy_module)
-    video_recorder.dump()
-    del video_rollout

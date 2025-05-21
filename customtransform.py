@@ -165,7 +165,6 @@ class torsoleftright(ObservationTransform):
 
 class fullbodygraph(ObservationTransform):
     def _apply_transform(self, obs: torch.Tensor) -> NonTensorData:
-        #at ~50% steps -> 0.70-0.90 r_training
         x = torch.tensor([[obs[0], obs[1], obs[2], obs[3], obs[4], obs[13], obs[14], obs[15], obs[16], obs[17], obs[18]],
                             [obs[5], obs[19], 0, 0, 0, 0, 0, 0, 0, 0, 0],
                             [obs[6], obs[20], 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -209,18 +208,19 @@ class heterograph(ObservationTransform):
                                 ], dtype=torch.float)
         
         data['joint'].x = torch.tensor([[obs[5], obs[19]],
-                                [obs[6], obs[20]],
-                                [obs[7], obs[21]],
-                                [obs[8], obs[22]],
-                                [obs[9], obs[23]],
-                                [obs[10], obs[24]],
-                                [obs[11], obs[25]],
-                                [obs[12], obs[26]],
-                                ], dtype=torch.float)
+                                        [obs[6], obs[20]],
+                                        [obs[7], obs[21]],
+                                        [obs[8], obs[22]],
+                                        [obs[9], obs[23]],
+                                        [obs[10], obs[24]],
+                                        [obs[11], obs[25]],
+                                        [obs[12], obs[26]],
+                                        ], dtype=torch.float)
         
         data['torso', 'connects', 'joint'].edge_index = torch.tensor([[0, 0, 0, 0], [0, 1, 2, 3]], dtype=torch.long)
         data['joint', 'connects', 'torso'].edge_index = torch.tensor([[0, 1, 2, 3], [0, 0, 0, 0]], dtype=torch.long)
         data['joint', 'connects', 'joint'].edge_index = torch.tensor([[0, 1, 2, 3, 4, 5, 6, 7], [4, 5, 6, 7, 0, 1, 2, 3]], dtype=torch.long)
+        data['torso', 'connects', 'torso'].edge_index = torch.tensor(([0], [0]), dtype=torch.long)
         return data
     
     #The transform must also modify the data at reset time
