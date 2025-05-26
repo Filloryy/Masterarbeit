@@ -142,5 +142,5 @@ def comparison_average(exp1, exp2):
         plt.tight_layout()
         plt.show()
 
-comparison_average('fullbodygraph', 'single_node')
-comparison('fullbodygraph', 'single_node', same_scale=False)
+#comparison_average('fullbodygraph', 'single_node')
+comparison('hetero', 'single_node', same_scale=False)

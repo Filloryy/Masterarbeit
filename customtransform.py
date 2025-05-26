@@ -207,19 +207,19 @@ class heterograph(ObservationTransform):
         data['torso'].x = torch.tensor([[obs[0], obs[1], obs[2], obs[3], obs[4], obs[13], obs[14], obs[15], obs[16], obs[17], obs[18]],
                                 ], dtype=torch.float)
         
-        data['joint'].x = torch.tensor([[obs[5], obs[19]],
-                                        [obs[6], obs[20]],
+        data['joint'].x = torch.tensor([[obs[11], obs[25]],
+                                        [obs[12], obs[26]],
                                         [obs[7], obs[21]],
                                         [obs[8], obs[22]],
                                         [obs[9], obs[23]],
                                         [obs[10], obs[24]],
-                                        [obs[11], obs[25]],
-                                        [obs[12], obs[26]],
+                                        [obs[5], obs[19]],
+                                        [obs[6], obs[20]],
                                         ], dtype=torch.float)
         
-        data['torso', 'connects', 'joint'].edge_index = torch.tensor([[0, 0, 0, 0], [0, 1, 2, 3]], dtype=torch.long)
-        data['joint', 'connects', 'torso'].edge_index = torch.tensor([[0, 1, 2, 3], [0, 0, 0, 0]], dtype=torch.long)
-        data['joint', 'connects', 'joint'].edge_index = torch.tensor([[0, 1, 2, 3, 4, 5, 6, 7], [4, 5, 6, 7, 0, 1, 2, 3]], dtype=torch.long)
+        data['torso', 'hip', 'joint'].edge_index = torch.tensor([[0, 0, 0, 0], [0, 2, 4, 6]], dtype=torch.long)
+        data['joint', 'hip', 'torso'].edge_index = torch.tensor([[0, 2, 4, 6], [0, 0, 0, 0]], dtype=torch.long)
+        data['joint', 'knee', 'joint'].edge_index = torch.tensor([[0, 1, 2, 3, 4, 5, 6, 7], [1, 0, 3, 2, 5, 4, 7, 6]], dtype=torch.long)
         data['torso', 'connects', 'torso'].edge_index = torch.tensor(([0], [0]), dtype=torch.long)
         return data
     
