@@ -45,7 +45,7 @@ max_grad_norm = 1.0
 
 frames_per_batch = 1000
 
-total_frames = 2_000_000
+total_frames = 5_000_000
 
 sub_batch_size = 10 # cardinality of the sub-samples gathered from the current data in the inner loop
 num_epochs = 10  # optimization steps per batch of data collected
@@ -209,7 +209,7 @@ trainer.register_op("pre_steps_log", log_reward)
 trainer.register_op("post_steps", lrscheduler_hook)
 trainer.register_op("post_steps_log", cum_reward)
 
-video = False #set to True to record video, False to train
+video = True #set to True to record video, False to train
 if video:
     trainer.load_from_file("Logs/hetero/Trainer/trainer.pt")
 
