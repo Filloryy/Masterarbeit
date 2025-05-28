@@ -25,7 +25,7 @@ from torchrl.modules import ProbabilisticActor, TanhNormal, ValueOperator
 from torchrl.objectives import ClipPPOLoss
 from torchrl.objectives.value import GAE
 from sim_environment.hubert import QuantrupedEnv
-from hooks import CustomProcessBatchHook, CustomProcessOptimBatchHook, LearningRateSchedulerHook, CumulativeLoggingHook
+from hooks import CustomProcessBatchHook, CustomProcessOptimBatchHook, LearningRateSchedulerHook, CumulativeLoggingHook, HFieldRandomizerHook
 from customtransform import ObsToGraph, OneNode, torsoleftright, fullbodygraph, heterograph
 import actors
 """
@@ -185,6 +185,7 @@ optimizerHook = OptimizerHook(optimizer=optim, loss_components=["loss_objective"
 log_reward = LogReward(logname="r_training" , log_pbar=True, reward_key=("next", "reward"))
 lrscheduler_hook = LearningRateSchedulerHook(scheduler)
 cum_reward = CumulativeLoggingHook(logname="Cumulative Reward", env=env, policy_module=policy_module)
+hfield_hook = HFieldRandomizerHook(env=env)
 
 #setting up trainer
 trainer = Trainer(
@@ -208,8 +209,9 @@ trainer.register_op("optimizer", optimizerHook)
 trainer.register_op("pre_steps_log", log_reward)
 trainer.register_op("post_steps", lrscheduler_hook)
 trainer.register_op("post_steps_log", cum_reward)
+trainer.register_op("post_steps", hfield_hook)
 
-video = True #set to True to record video, False to train
+video = False #set to True to record video, False to train
 if video:
     trainer.load_from_file("Logs/hetero/Trainer/trainer.pt")
 

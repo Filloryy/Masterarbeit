@@ -1,10 +1,11 @@
+import numpy as np
 import torch
 from torchrl.trainers import TrainerHookBase, OptimizerHook, LogReward
 from torchrl.envs.utils import ExplorationType, set_exploration_type
 import logging #??
 from collections import defaultdict
 from typing import Union, Dict
-
+from sim_environment.hubert import create_new_hfield
 
 
 
@@ -104,3 +105,13 @@ class videohook(TrainerHookBase):
     def register(self, trainer, name="trainer_saver"):
         trainer.register_op("post_steps", self)
         trainer.register_module(name, self)
+
+class HFieldRandomizerHook(TrainerHookBase):
+    def __init__(self, env, smoothness_range=(0.1, 1)):
+        self.env = env
+        self.smoothness_range = smoothness_range
+
+    def __call__(self, *args, **kwargs):
+        # Randomize smoothness each time
+        new_smoothness = np.random.uniform(*self.smoothness_range)
+        self.env.unwrapped.update_hfield(smoothness=new_smoothness)
