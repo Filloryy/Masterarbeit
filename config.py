@@ -23,26 +23,33 @@ hetero_config = ExperimentConfig(
     experiment= "hetero",
     actor = "hetero_actor",
     transform = "heterograph",
-    terrain = "hills",
-    total_frames = 10_000,)
+    terrain = "flat",
+    total_frames = 500_000,)
 
 single_config = ExperimentConfig(
     experiment = "single_node",
     actor= "single_node_actor",
     transform = "OneNode",
-    terrain = "hills",
-    total_frames = 10_000,)
+    terrain = "flat",
+    total_frames = 500_000,)
 
 left_right_config = ExperimentConfig(
     experiment = "left_right",
     actor = "multinode_actor",
     transform = "torsoleftright",
-    terrain = "hills",
-    total_frames = 10_000,)
+    terrain = "flat",
+    total_frames = 500_000,)
 
 fully_distributed_config = ExperimentConfig(
     experiment = "fully_distributed",
     actor = "multinode_actor",
     transform = "fullbodygraph",
-    terrain = "hills",
-    total_frames = 10_000,)
+    terrain = "flat",
+    total_frames = 500_000,)
+
+mlp_config = ExperimentConfig(
+    experiment = "mlp",
+    actor = "mlp_actor",
+    transform = "Notransform",
+    terrain = "flat",
+    total_frames = 500_000,)

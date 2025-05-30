@@ -29,22 +29,16 @@ from hooks import (
     CumulativeLoggingHook,
     hfield_update_hook,
 )
-from customtransform import OneNode, torsoleftright, fullbodygraph, heterograph
+from customtransform import OneNode, torsoleftright, fullbodygraph, heterograph, Notransform
 import actors
 from config import (
     hetero_config,
     single_config,
     left_right_config,
     fully_distributed_config,
+    mlp_config,
 )
-"""
-is_fork = multiprocessing.get_start_method() == "fork"
-device = (
-    torch.device(0)
-    if torch.cuda.is_available() and not is_fork
-    else torch.device("cpu")
-)
-"""
+
 config = hetero_config  # choose from: hetero_config, single_config, left_right_config, fully_distributed_config
 def run_experiment(config):
     device = torch.device("cpu")
@@ -69,17 +63,18 @@ def run_experiment(config):
         "OneNode": OneNode,
         "torsoleftright": torsoleftright,
         "fullbodygraph": fullbodygraph,
+        "Notransform": Notransform,
     }
 
     actor_map = {
         "hetero_actor": actors.hetero_actor,
         "single_node_actor": actors.single_node_actor,
         "multinode_actor": actors.multinode_actor,
-        "mlp_actor": lambda: actors.mlp_actor(num_cells=256, action_dim=env.action_spec.shape[-1], device=device),
+        "mlp_actor": lambda: actors.mlp_actor(num_cells=256, action_dim=8, device=device),
     }
 
     selected_transform = transform_map.get(config.transform)
-    if selected_transform is None:
+    if selected_transform is None and config.transform is not None:
         raise ValueError(f"Unknown transform: {config.transform}")
 
     actor_fn = actor_map.get(config.actor)
@@ -120,8 +115,9 @@ def run_experiment(config):
     )
     record_env.transform[0].init_stats(num_iter=1000, reduce_dim=0, cat_dim=0)
     """
+    policy_in_keys = ["graph"] if selected_transform is not Notransform else ["observation"]
     policy_module = TensorDictModule(
-        actor_net, in_keys=["graph"], out_keys=["loc", "scale"]
+        actor_net, in_keys=policy_in_keys, out_keys=["loc", "scale"]
     )
 
     policy_module = ProbabilisticActor(
@@ -226,7 +222,7 @@ def run_experiment(config):
     if terrain == "hills": trainer.register_op("post_steps", hfield_updater)
     
     if video:
-        trainer.load_from_file(f"{file_path}/Trainer/trainer.pt")
+        trainer.load_from_file(f"{file_path}/trainer.pt")
 
         #rendering video
         with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
@@ -236,7 +232,7 @@ def run_experiment(config):
     else:
         trainer.train()
 
-experiment_list = [hetero_config, single_config, left_right_config, fully_distributed_config]
+experiment_list = [hetero_config, single_config, left_right_config, fully_distributed_config, mlp_config]
 
 for cfg in experiment_list:
     run_experiment(cfg)
