@@ -4,9 +4,8 @@ from torchrl.envs.utils import ExplorationType, set_exploration_type
 import logging #??
 from collections import defaultdict
 from typing import Union, Dict
-
-
-
+from sim_environment.hubert import create_new_hfield
+import random
 
 class CustomProcessBatchHook(TrainerHookBase):
     def __init__(self, advantage_module, replay_buffer, sub_batch_size, device):
@@ -104,3 +103,11 @@ class videohook(TrainerHookBase):
     def register(self, trainer, name="trainer_saver"):
         trainer.register_op("post_steps", self)
         trainer.register_module(name, self)
+
+class hfield_update_hook(TrainerHookBase):
+    def __init__(self, env):
+        self.env = env
+
+    def __call__(self):
+        smoothness = random.uniform(0, 1)
+        create_new_hfield(self.env.unwrapped.model, smoothness)

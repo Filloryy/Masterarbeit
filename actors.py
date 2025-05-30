@@ -4,6 +4,18 @@ from torch import nn
 from torch_geometric.nn import Linear, Sequential, GCNConv, GraphConv, global_mean_pool, HGTConv, HeteroConv, to_hetero
 from torch_geometric.data import Data, Batch
 
+def mlp_actor(num_cells=256, action_dim=8, device="cpu"):
+    return nn.Sequential(
+        nn.LazyLinear(num_cells, device=device),
+        nn.Tanh(),
+        nn.LazyLinear(num_cells, device=device),
+        nn.Tanh(),
+        nn.LazyLinear(num_cells, device=device),
+        nn.Tanh(),
+        nn.LazyLinear(2 * action_dim, device=device),
+        NormalParamExtractor(),
+    )
+
 class single_node_actor(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -29,6 +41,7 @@ class single_node_actor(torch.nn.Module):
         #print((loc, scale).shape)
         return loc, scale
 
+
 class multinode_actor(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -45,7 +58,6 @@ class multinode_actor(torch.nn.Module):
             NormalParamExtractor(),
         ])
 
-
     def forward(self, data):
         if isinstance(data, list):
             batch = Batch.from_data_list(data)
@@ -57,28 +69,12 @@ class multinode_actor(torch.nn.Module):
             scale = scale.t().squeeze(-1)
         return loc, scale
     
+
 class hetero_actor(torch.nn.Module):
     def __init__(self):
         super().__init__()
         
         metadata = (['torso', 'joint'], [('torso', 'hip', 'joint'), ('joint', 'hip', 'torso'), ('joint', 'knee', 'joint')])
-        """
-        node_types, edge_types = metadata 
-        self.joint_lin = Linear(2, 11)
-        self.torso_lin = Linear(11, 11)
-        self.conv_layer1 = HeteroConv({          #this is a single layer
-            ('torso', 'connects', ' joint'): GraphConv(11, 64),
-            ('joint', 'connects', 'torso'): GraphConv(11, 64),
-            ('joint', 'connects', 'joint'): GraphConv(11, 64),
-            }, aggr='sum')
-        self.conv_layer2 = HeteroConv({          #this is a single layer
-            ('torso', 'connects', ' joint'): GraphConv(11, 64),
-            ('joint', 'connects', 'torso'): GraphConv(11, 64),
-            ('joint', 'connects', 'joint'): GraphConv(11, 64),
-            }, aggr='sum')
-        self.output_layer = Linear(64, 2)
-        self.extractor = NormalParamExtractor()
-        """
         self.joint_lin = Linear(2, 11)
         self.torso_lin = Linear(11, 11)
         self.propagation_model = to_hetero(Sequential("x, edge_index", [
@@ -119,28 +115,3 @@ class hetero_actor(torch.nn.Module):
             loc = loc.squeeze(-1)
             scale = scale.squeeze(-1)
         return loc, scale
-    
-        """
-        batch = False
-        if isinstance(data, list):
-            data = Batch.from_data_list(data)
-            batch = True
-
-        edge_index_dict = data.edge_index_dict
-        x_dict = data.x_dict
-
-        x_dict['joint'] = self.joint_lin(x_dict['joint'])
-        x_dict['torso'] = self.torso_lin(x_dict['torso'])
-
-        for conv in self.propagation_model:
-            x_dict = conv(x_dict, edge_index_dict)
-            x_dict = {k: self.tanh(v) for k, v in x_dict.items()}
-
-        x_dict['joint'] = self.lin_out(x_dict['joint'])
-        x_dict['joint'] = self.tanh(x_dict['joint'])
-        loc, scale = self.extractor(x_dict['joint'])
-        if batch:
-            loc = loc.view(10, 8, -1)
-            scale = scale.view(10, 8, -1)
-        loc, scale = loc.squeeze(-1), scale.squeeze(-1)
-        """
