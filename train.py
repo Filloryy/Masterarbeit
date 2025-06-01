@@ -39,7 +39,6 @@ from config import (
     mlp_config,
 )
 
-config = hetero_config  # choose from: hetero_config, single_config, left_right_config, fully_distributed_config
 def run_experiment(config):
     device = torch.device("cpu")
     terrain = config.terrain
@@ -69,7 +68,8 @@ def run_experiment(config):
     actor_map = {
         "hetero_actor": actors.hetero_actor,
         "single_node_actor": actors.single_node_actor,
-        "multinode_actor": actors.multinode_actor,
+        "distributed_actor": actors.distributed_actor,
+        "left_right_actor": actors.left_right_actor,
         "mlp_actor": lambda: actors.mlp_actor(num_cells=256, action_dim=8, device=device),
     }
 
@@ -231,6 +231,5 @@ def run_experiment(config):
         trainer.train()
 
 experiment_list = [hetero_config, single_config, left_right_config, fully_distributed_config, mlp_config]
-
 for cfg in experiment_list:
     run_experiment(cfg)

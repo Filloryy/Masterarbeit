@@ -127,20 +127,23 @@ def plot_average_runs_csv(filepath, title, ax):
         print(f"File not found: {filepath}")
         return False
 
-def comparison_average(exp1, exp2):
-    csv_dir1 = f'Logs/{exp1}/scalars'
-    csv_dir2 = f'Logs/{exp2}/scalars'
-    csv_files = [f for f in os.listdir(csv_dir1) if f.endswith('.csv')]
+def comparison_average():
+    experiments = [d for d in os.listdir("Logs") if os.path.isdir(os.path.join("Logs", d))]
+    if not experiments:
+        print("No experiments found in Logs/")
+        return
+    first_scalars = os.path.join("Logs", experiments[0], "scalars")
+    csv_files = [f for f in os.listdir(first_scalars) if f.endswith('.csv')]
     for fname in csv_files:
         fig, ax = plt.subplots(figsize=(8, 5))
-        csv_path1 = os.path.join(csv_dir1, fname)
-        csv_path2 = os.path.join(csv_dir2, fname)
-        plot_average_runs_csv(csv_path1, f'{exp1} avg: {fname[:-4]}', ax)
-        plot_average_runs_csv(csv_path2, f'{exp2} avg: {fname[:-4]}', ax)
+        for exp in experiments:    
+            csv_path = os.path.join("Logs", exp, "scalars", fname)
+            plot_average_runs_csv(csv_path, ax, label=exp)
         ax.set_title(f'Average comparison: {fname[:-4]}')
+        ax.set_xlabel('Step')
+        ax.set_ylabel('Average Value')
         ax.legend()
         plt.tight_layout()
         plt.show()
 
-#comparison_average('fullbodygraph', 'single_node')
-comparison('hetero', 'single_node', same_scale=False)
+comparison_average()

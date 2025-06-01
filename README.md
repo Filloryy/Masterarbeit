@@ -1,5 +1,5 @@
 # Masterarbeit
-TODO:
+To-do:
 compare performance for graph types > single_node>fullbodygraph
 "fix" feature dimension
 "fix" pooling

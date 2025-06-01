@@ -35,14 +35,14 @@ single_config = ExperimentConfig(
 
 left_right_config = ExperimentConfig(
     experiment = "left_right",
-    actor = "multinode_actor",
+    actor = "left_right_actor",
     transform = "torsoleftright",
     terrain = "flat",
     total_frames = 1_000_000,)
 
 fully_distributed_config = ExperimentConfig(
     experiment = "fully_distributed",
-    actor = "multinode_actor",
+    actor = "distributed_actor",
     transform = "fullbodygraph",
     terrain = "flat",
     total_frames = 1_000_000,)

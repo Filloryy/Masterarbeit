@@ -4,6 +4,18 @@ from torch import nn
 from torch_geometric.nn import Linear, Sequential, GCNConv, GraphConv, global_mean_pool, HGTConv, HeteroConv, to_hetero
 from torch_geometric.data import Data, Batch
 
+def mlp_actor(num_cells=256, action_dim=8, device="cpu"):
+    return nn.Sequential(
+        nn.LazyLinear(num_cells, device=device),
+        nn.Tanh(),
+        nn.LazyLinear(num_cells, device=device),
+        nn.Tanh(),
+        nn.LazyLinear(num_cells, device=device),
+        nn.Tanh(),
+        nn.LazyLinear(2 * action_dim, device=device),
+        NormalParamExtractor(),
+    )
+
 class single_node_actor(torch.nn.Module):
     def __init__(self):
         super().__init__()
@@ -29,7 +41,7 @@ class single_node_actor(torch.nn.Module):
         #print((loc, scale).shape)
         return loc, scale
 
-class multinode_actor(torch.nn.Module):
+class distributed_actor(torch.nn.Module):
     def __init__(self):
         super().__init__()
 
@@ -55,7 +67,36 @@ class multinode_actor(torch.nn.Module):
             loc = loc.t().squeeze(-1)
             scale = scale.t().squeeze(-1)
         return loc, scale
-    
+
+
+class left_right_actor(torch.nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.propagation_model = Sequential("x, edge_index, batch", [
+            (Linear(11, 64), "x -> x"),
+            (GraphConv(64, 64), "x, edge_index -> x"),
+            nn.Tanh(),
+            (GraphConv(64, 64), "x, edge_index -> x"),
+            nn.Tanh(),
+            (Linear(64, 16), "x -> x"),
+            nn.Tanh(),
+            (global_mean_pool, "x, batch -> x"),
+            NormalParamExtractor(),
+        ])
+
+    def forward(self, data):
+        if isinstance(data, list):
+            batch = Batch.from_data_list(data)
+            loc, scale = self.propagation_model(batch.x, batch.edge_index, batch.batch)  
+        else:
+            batch_vec = torch.zeros(data.x.size(0), dtype=torch.long, device=data.x.device)
+            loc, scale = self.propagation_model(data.x, data.edge_index, batch_vec)
+            loc = loc.t().squeeze(-1)
+            scale = scale.t().squeeze(-1)
+        return loc, scale
+
+
 class hetero_actor(torch.nn.Module):
     def __init__(self):
         super().__init__()
