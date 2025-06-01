@@ -45,7 +45,6 @@ class multinode_actor(torch.nn.Module):
             NormalParamExtractor(),
         ])
 
-
     def forward(self, data):
         if isinstance(data, list):
             batch = Batch.from_data_list(data)
@@ -65,11 +64,9 @@ class hetero_actor(torch.nn.Module):
         self.joint_lin = Linear(2, 11)
         self.torso_lin = Linear(11, 11)
         self.propagation_model = to_hetero(Sequential("x, edge_index", [
-            #(Linear(11, 64), "x -> x"),
             (GraphConv(11, 64), "x, edge_index -> x"),
             nn.Tanh(),
             (GraphConv(64, 64), "x, edge_index -> x"),
-            #(Linear(64, 2), "x -> x"),
             nn.Tanh(),
         ]),
             metadata=metadata,
@@ -102,28 +99,3 @@ class hetero_actor(torch.nn.Module):
             loc = loc.squeeze(-1)
             scale = scale.squeeze(-1)
         return loc, scale
-    
-        """
-        batch = False
-        if isinstance(data, list):
-            data = Batch.from_data_list(data)
-            batch = True
-
-        edge_index_dict = data.edge_index_dict
-        x_dict = data.x_dict
-
-        x_dict['joint'] = self.joint_lin(x_dict['joint'])
-        x_dict['torso'] = self.torso_lin(x_dict['torso'])
-
-        for conv in self.propagation_model:
-            x_dict = conv(x_dict, edge_index_dict)
-            x_dict = {k: self.tanh(v) for k, v in x_dict.items()}
-
-        x_dict['joint'] = self.lin_out(x_dict['joint'])
-        x_dict['joint'] = self.tanh(x_dict['joint'])
-        loc, scale = self.extractor(x_dict['joint'])
-        if batch:
-            loc = loc.view(10, 8, -1)
-            scale = scale.view(10, 8, -1)
-        loc, scale = loc.squeeze(-1), scale.squeeze(-1)
-        """
