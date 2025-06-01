@@ -62,23 +62,6 @@ class hetero_actor(torch.nn.Module):
         super().__init__()
         
         metadata = (['torso', 'joint'], [('torso', 'hip', 'joint'), ('joint', 'hip', 'torso'), ('joint', 'knee', 'joint')])
-        """
-        node_types, edge_types = metadata 
-        self.joint_lin = Linear(2, 11)
-        self.torso_lin = Linear(11, 11)
-        self.conv_layer1 = HeteroConv({          #this is a single layer
-            ('torso', 'connects', ' joint'): GraphConv(11, 64),
-            ('joint', 'connects', 'torso'): GraphConv(11, 64),
-            ('joint', 'connects', 'joint'): GraphConv(11, 64),
-            }, aggr='sum')
-        self.conv_layer2 = HeteroConv({          #this is a single layer
-            ('torso', 'connects', ' joint'): GraphConv(11, 64),
-            ('joint', 'connects', 'torso'): GraphConv(11, 64),
-            ('joint', 'connects', 'joint'): GraphConv(11, 64),
-            }, aggr='sum')
-        self.output_layer = Linear(64, 2)
-        self.extractor = NormalParamExtractor()
-        """
         self.joint_lin = Linear(2, 11)
         self.torso_lin = Linear(11, 11)
         self.propagation_model = to_hetero(Sequential("x, edge_index", [

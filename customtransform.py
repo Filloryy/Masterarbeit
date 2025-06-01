@@ -241,3 +241,8 @@ class heterograph(ObservationTransform):
             dtype=observation_spec.dtype,
             device=observation_spec.device,
         )
+    
+class Notransform(ObservationTransform):
+    def _apply_transform(self, obs: torch.Tensor) -> NonTensorData:
+        return obs
+    

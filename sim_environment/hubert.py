@@ -83,7 +83,7 @@ class QuantrupedEnv(AntEnv):
 
         ant_mass = mujoco.mj_getTotalmass(self.model)
         mujoco.mj_setTotalmass(self.model, ant_mass *  10)
-
+        create_new_hfield(self.model, 0.1, 2)
     @property
     def is_healthy(self):
         state = self.state_vector()
@@ -96,5 +96,5 @@ class QuantrupedEnv(AntEnv):
             self.smoothness = smoothness
         if bump_scale is not None:
             self.bump_scale = bump_scale
-        create_new_hfield(self.model, self.smoothness, self.bump_scale)
+        create_new_hfield(self.model, smoothness, bump_scale)
         #print("Hfield updated with smoothness: ", self.smoothness, " and bump scale: ", self.bump_scale)

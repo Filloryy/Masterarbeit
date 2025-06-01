@@ -106,7 +106,7 @@ class videohook(TrainerHookBase):
         trainer.register_op("post_steps", self)
         trainer.register_module(name, self)
 
-class HFieldRandomizerHook(TrainerHookBase):
+class hfield_update_hook(TrainerHookBase):
     def __init__(self, env, smoothness_range=(0.1, 1)):
         self.env = env
         self.smoothness_range = smoothness_range
