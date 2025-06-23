@@ -90,21 +90,33 @@ class WeightWatcherHook(TrainerHookBase):
         trainer.register_op("post_steps", self)
         trainer.register_module(name, self)
 
-class videohook(TrainerHookBase):
-    def __init__(self, trainer, save_trainer_interval, base_path):
-        self.save_trainer_interval = save_trainer_interval
-        self.base_path = base_path
-        self.last_save = -1
-        self.trainer = trainer
+class VideoRecorderHook(TrainerHookBase):
+    def __init__(self, env, policy_module, file_path, interval=100):
+        self.env = env
+        self.policy_module = policy_module
+        self.file_path = file_path
+        self.interval = interval
+        self.counter = 0
 
-    def __call__(self):
-        if (self.trainer.collected_frames - self.last_save) > self.save_trainer_interval:
-            self.last_save = self.trainer.collected_frames
-            torch.save(self.state_dict(), self.base_path + self.trainer.collected_frames + ".pt")
-
-    def register(self, trainer, name="trainer_saver"):
-        trainer.register_op("post_steps", self)
-        trainer.register_module(name, self)
+    def __call__(self, *args, **kwargs):
+        if self.counter % self.interval == 0:
+            with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
+                rollout = self.env.rollout(1000, self.policy_module, auto_reset=True, break_when_any_done=True)
+                if "action" in rollout:
+                    actions = rollout["action"].cpu().numpy()
+                    np.savetxt(f"{self.file_path}/video_actions_step{self.counter}.txt", actions, fmt="%.6f", delimiter=",")
+                    print(f"Actions saved to {self.file_path}/video_actions_step{self.counter}.txt")
+                if "observation" in rollout:
+                    observations = rollout["observation"].cpu().numpy()
+                    np.savetxt(f"{self.file_path}/video_observations_step{self.counter}.txt", observations, fmt="%.6f", delimiter=",")
+                    print(f"Observations saved to {self.file_path}/video_observations_step{self.counter}.txt")
+                if "terminated" in rollout:
+                    terminated = rollout["terminated"].cpu().numpy()
+                    np.savetxt(f"{self.file_path}/video_terminated_step{self.counter}.txt", terminated, fmt="%d", delimiter=",")
+                    print(f"Terminated states saved to {self.file_path}/video_terminated_step{self.counter}.txt")
+                if hasattr(self.env, 'transform') and hasattr(self.env.transform[-1], 'dump'):
+                    self.env.transform[-1].dump()
+        self.counter += 1
 
 class hfield_update_hook(TrainerHookBase):
     def __init__(self, env, smoothness_range=(0.1, 1)):

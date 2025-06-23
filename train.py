@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from torch import nn
 
@@ -15,7 +16,7 @@ from torchrl.envs import (
 )
 from torchrl.envs.libs.gym import GymEnv
 from torchrl.envs.utils import ExplorationType, set_exploration_type
-from torchrl.modules import ProbabilisticActor, TanhNormal, ValueOperator
+from torchrl.modules import ProbabilisticActor, TanhNormal, ValueOperator, TruncatedNormal
 from torchrl.objectives import ClipPPOLoss
 from torchrl.objectives.value import GAE
 from torchrl.record import CSVLogger, VideoRecorder
@@ -28,8 +29,9 @@ from hooks import (
     LearningRateSchedulerHook,
     CumulativeLoggingHook,
     hfield_update_hook,
+    VideoRecorderHook,
 )
-from customtransform import OneNode, torsoleftright, fullbodygraph, heterograph, Notransform
+from customtransform import OneNode, torsoleftright, fullbodygraph, heterograph, Notransform, heterograph_full_info, heterograph_old, full_contact
 import actors
 from config import (
     hetero_config,
@@ -37,6 +39,11 @@ from config import (
     left_right_config,
     fully_distributed_config,
     mlp_config,
+    no_batching_config,
+    investigactor_config,
+    hetero_full_info_config,
+    hetero_config_old,
+    contact_config
 )
 
 def run_experiment(config):
@@ -63,6 +70,9 @@ def run_experiment(config):
         "torsoleftright": torsoleftright,
         "fullbodygraph": fullbodygraph,
         "Notransform": Notransform,
+        "heterograph_full_info": heterograph_full_info,
+        "heterograph_old": heterograph_old,
+        "full_contact": full_contact
     }
 
     actor_map = {
@@ -70,7 +80,11 @@ def run_experiment(config):
         "single_node_actor": actors.single_node_actor,
         "distributed_actor": actors.distributed_actor,
         "left_right_actor": actors.left_right_actor,
-        "mlp_actor": lambda: actors.mlp_actor(num_cells=256, action_dim=8, device=device),
+        "mlp_actor": lambda: actors.mlp_actor(num_cells=64, action_dim=8, device=device),
+        "investigactor": actors.investigactor,
+        "no_batching_actor": actors.no_batching_actor,
+        "hetero_full_info_actor": actors.hetero_full_info_actor,
+        "contact_actor": actors.contact_actor,
     }
 
     selected_transform = transform_map.get(config.transform)
@@ -83,7 +97,7 @@ def run_experiment(config):
     actor_net = actor_fn().to(device)
 
     #working environment
-    base_env = GymEnv("hubert") #hubert is a slightly changed ant-v4 environment
+    base_env = GymEnv("hubert") if config.contact_forces else GymEnv("Quant")
 
     env = TransformedEnv(
         base_env,
@@ -156,7 +170,7 @@ def run_experiment(config):
     )
 
     #init dummy batch, needed for LazyLinear
-    observation_shape = (27,)
+    observation_shape = (111,) if config.contact_forces else (27,)
     dummy_batch = torch.zeros((1, *observation_shape), device=device, dtype=torch.float32)
     with torch.no_grad():
         value_module(dummy_batch)
@@ -194,6 +208,7 @@ def run_experiment(config):
     lrscheduler_hook = LearningRateSchedulerHook(scheduler)
     cum_reward = CumulativeLoggingHook(logname="Cumulative Reward", env=env, policy_module=policy_module)
     hfield_updater= hfield_update_hook(env)
+    video_recorder_hook = VideoRecorderHook(record_env, policy_module, file_path)
 
     #setting up trainer
     trainer = Trainer(
@@ -206,7 +221,7 @@ def run_experiment(config):
         clip_grad_norm=True,
         clip_norm=max_grad_norm,
         progress_bar=True,
-        save_trainer_interval=1000000,
+        save_trainer_interval=100000,
         log_interval=10000,
         save_trainer_file=f"{file_path}/trainer.pt",
     )
@@ -217,19 +232,53 @@ def run_experiment(config):
     trainer.register_op("pre_steps_log", log_reward)
     trainer.register_op("post_steps", lrscheduler_hook)
     trainer.register_op("post_steps_log", cum_reward)
+    if config.live_recording: trainer.register_op("post_steps", video_recorder_hook)
     if terrain == "hills": trainer.register_op("post_steps", hfield_updater)
     
     if video:
         trainer.load_from_file(f"{file_path}/trainer.pt")
-
-        #rendering video
+        # rendering video
         with set_exploration_type(ExplorationType.DETERMINISTIC), torch.no_grad():
-            video_rollout = record_env.rollout(1000, policy_module)
+            video_rollout = record_env.rollout(1000, policy_module, break_when_any_done=True)
+            if "action" in video_rollout:
+                actions = video_rollout["action"].cpu().numpy()
+                np.savetxt(f"{file_path}/video_actions.txt", actions, fmt="%.6f", delimiter=",")
+                print(f"Actions saved to {file_path}/video_actions.txt")
+            else:
+                print("No 'action' key found in video_rollout. Available keys:", video_rollout.keys())
             video_recorder.dump()
+               # Save observations
+        if "observation" in video_rollout:
+            observations = video_rollout["observation"].cpu().numpy()
+            np.savetxt(f"{file_path}/video_observations.txt", observations[:, 5:13], fmt="%.6f", delimiter=",")
+            print(f"Observations saved to {file_path}/video_observations.txt")
+        else:
+            print("No 'observation' key found in video_rollout. Available keys:", video_rollout.keys())
             del video_rollout
     else:
         trainer.train()
+        try:
+            collector.shutdown()
+        except Exception:
+            print("Could not Shutdown collector")
+            pass
+        try:
+            env.close()
+        except Exception:
+            print("Could not close env")
+            pass
 
-experiment_list = [hetero_config, single_config, left_right_config, fully_distributed_config, mlp_config]
-for cfg in experiment_list:
+import multiprocessing as mp
+
+def run_experiment_wrapper(cfg):
     run_experiment(cfg)
+    print(f"finished {getattr(cfg, 'experiment', repr(cfg))}")
+
+if __name__ == "__main__":
+    mp.set_start_method('spawn', force=True)
+    #experiment_list = [contact_config]
+    experiment_list = [contact_config, no_batching_config, hetero_full_info_config, hetero_config, fully_distributed_config, mlp_config, left_right_config, single_config]
+    for cfg in experiment_list:
+        p = mp.Process(target=run_experiment_wrapper, args=(cfg,))
+        p.start()
+        p.join()

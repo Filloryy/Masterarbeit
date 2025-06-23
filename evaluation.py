@@ -129,16 +129,23 @@ def plot_average_runs_csv(filepath, title, ax):
 
 def comparison_average():
     experiments = [d for d in os.listdir("Logs") if os.path.isdir(os.path.join("Logs", d))]
-    if not experiments:
-        print("No experiments found in Logs/")
+    # Only keep experiments with non-empty scalars
+    experiments_with_scalars = []
+    for exp in experiments:
+        scalars_dir = os.path.join("Logs", exp, "scalars")
+        if os.path.isdir(scalars_dir) and any(f.endswith('.csv') for f in os.listdir(scalars_dir)):
+            experiments_with_scalars.append(exp)
+    if not experiments_with_scalars:
+        print("No experiments with CSVs found in Logs/")
         return
-    first_scalars = os.path.join("Logs", experiments[0], "scalars")
+    first_scalars = os.path.join("Logs", experiments_with_scalars[0], "scalars")
     csv_files = [f for f in os.listdir(first_scalars) if f.endswith('.csv')]
     for fname in csv_files:
         fig, ax = plt.subplots(figsize=(8, 5))
-        for exp in experiments:    
+        for exp in experiments_with_scalars:
             csv_path = os.path.join("Logs", exp, "scalars", fname)
-            plot_average_runs_csv(csv_path, ax, label=exp)
+            print(f"Plotting: {csv_path}")  # Debug print
+            plot_average_runs_csv(csv_path, exp, ax)
         ax.set_title(f'Average comparison: {fname[:-4]}')
         ax.set_xlabel('Step')
         ax.set_ylabel('Average Value')
